@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: fintech-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - fintech_network
+
+  backend:
+    build: ./backend
+    container_name: fintech-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017/fintech_advisor
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+    networks:
+      - fintech_network
+
+  frontend:
+    build: ./frontend
+    container_name: fintech-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - fintech_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  fintech_network:
+    driver: bridge
