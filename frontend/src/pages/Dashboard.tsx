@@ -155,6 +155,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   };
 
+  // Get personalized greeting
+  const getPersonalizedGreeting = () => {
+    const firstName = user?.firstName;
+    if (firstName) {
+      return `Hello ${firstName}, welcome to FinanceBrews`;
+    }
+    return 'Welcome to FinanceBrews';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50">
       {/* Header with Scrollable Navigation */}
@@ -189,7 +198,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
             
             <div className="flex items-center space-x-4 flex-shrink-0">
-              <span className="text-amber-800 hidden sm:block">Welcome, {user?.firstName}!</span>
+              <span className="text-amber-800 hidden sm:block">
+                {user?.firstName ? `Hello, ${user.firstName}!` : 'Welcome!'}
+              </span>
               <UserButton afterSignOutUrl="/" />
             </div>
           </div>
@@ -201,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-amber-900 mb-2">
-            Welcome to FinanceBrews
+            {getPersonalizedGreeting()}
           </h2>
           <p className="text-amber-800">
             Your personal AI-powered financial advisor. Start by exploring our tools or ask our AI assistant any financial question.

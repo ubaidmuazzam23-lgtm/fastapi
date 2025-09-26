@@ -11,10 +11,12 @@ import {
   RefreshCw,
   CheckCircle,
   AlertCircle,
-  DollarSign,
+  IndianRupee,
   Calendar,
   Target,
-  CreditCard
+  CreditCard,
+  Map,
+  BarChart2
 } from 'lucide-react';
 import {
   LineChart,
@@ -31,7 +33,16 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter,
+  ComposedChart,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  RadialBarChart,
+  RadialBar
 } from 'recharts';
 
 interface RepaymentPlansProps {
@@ -110,6 +121,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Debt Summary Data:', data);
         setDebtSummary(data);
         setMonthlyBudget(Math.max(15000, data.available_budget + data.monthly_minimums));
       }
@@ -139,6 +151,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
 
       if (response.ok) {
         const plan = await response.json();
+        console.log('Generated Plan:', plan);
         setCurrentPlan(plan);
       } else {
         const errorData = await response.json();
@@ -154,72 +167,206 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
 
   // Chart data functions
   const getBalanceOverTimeData = () => {
-    if (!currentPlan?.balance_series) return [];
-    return currentPlan.balance_series.map((balance, index) => ({
+    if (!currentPlan?.balance_series || !Array.isArray(currentPlan.balance_series)) {
+      console.log('No balance series data available');
+      return [];
+    }
+    
+    const data = currentPlan.balance_series.map((balance, index) => ({
       month: index,
-      balance: balance,
-      formattedBalance: `₹${(balance / 1000).toFixed(0)}K`
+      balance: Number(balance) || 0,
+      formattedBalance: `₹${((Number(balance) || 0) / 1000).toFixed(0)}K`
     }));
+    
+    console.log('Balance over time data:', data);
+    return data;
   };
 
   const getMonthlyPaymentData = () => {
-    if (!currentPlan?.months) return [];
-    return currentPlan.months.slice(0, 12).map(month => ({
-      month: month.month_index,
-      total_payment: month.total_paid,
-      interest: month.total_interest,
-      principal: month.total_paid - month.total_interest
+    if (!currentPlan?.months || !Array.isArray(currentPlan.months)) {
+      console.log('No monthly payment data available');
+      return [];
+    }
+    
+    const data = currentPlan.months.slice(0, 12).map(month => ({
+      month: month.month_index || 0,
+      total_payment: Number(month.total_paid) || 0,
+      interest: Number(month.total_interest) || 0,
+      principal: (Number(month.total_paid) || 0) - (Number(month.total_interest) || 0)
     }));
+    
+    console.log('Monthly payment data:', data);
+    return data;
   };
 
   const getInterestVsPrincipalData = () => {
-    if (!currentPlan || !debtSummary) return [];
-    const totalInterest = currentPlan.total_interest_paid;
-    const totalPrincipal = debtSummary.total_debt;
+    if (!currentPlan || !debtSummary) {
+      console.log('No interest vs principal data available');
+      return [];
+    }
     
-    return [
+    const totalInterest = Number(currentPlan.total_interest_paid) || 0;
+    const totalPrincipal = Number(debtSummary.total_debt) || 0;
+    
+    const data = [
       { name: 'Principal Payments', value: totalPrincipal, fill: '#059669' },
       { name: 'Interest Payments', value: totalInterest, fill: '#DC2626' }
     ];
+    
+    console.log('Interest vs principal data:', data);
+    return data;
   };
 
   const getPaymentAllocationData = () => {
-    if (!currentPlan?.months || !debtSummary?.debts) return [];
+    if (!currentPlan?.months || !Array.isArray(currentPlan.months) || currentPlan.months.length === 0) {
+      console.log('No payment allocation data - no months');
+      return { data: [], debtNames: [] };
+    }
     
-    const firstMonth = currentPlan.months[0];
-    if (!firstMonth) return [];
+    // Get first 12 months for area chart
+    const monthsToShow = currentPlan.months.slice(0, Math.min(12, currentPlan.months.length));
     
-    const colors = ['#d97706', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#ea580c'];
+    // Get all unique debt names
+    const allDebts = new Set<string>();
+    monthsToShow.forEach(month => {
+      if (month.allocations && Array.isArray(month.allocations)) {
+        month.allocations.forEach(alloc => {
+          if (alloc && alloc.name && (Number(alloc.payment) || 0) > 0) {
+            allDebts.add(alloc.name);
+          }
+        });
+      }
+    });
     
-    return firstMonth.allocations
-      .filter(alloc => alloc.payment > 0)
-      .map((alloc, index) => ({
-        debt: alloc.name,
-        payment: alloc.payment,
-        fill: colors[index % colors.length]
-      }));
+    const debtNames = Array.from(allDebts);
+    
+    // Create data structure for area chart
+    const data = monthsToShow.map(month => {
+      const monthData: any = {
+        month: month.month_index || 0,
+        total: Number(month.total_paid) || 0
+      };
+      
+      // Add each debt's payment for this month
+      debtNames.forEach(debtName => {
+        const allocation = month.allocations?.find(alloc => alloc && alloc.name === debtName);
+        monthData[debtName] = Number(allocation?.payment) || 0;
+      });
+      
+      return monthData;
+    });
+    
+    console.log('Payment allocation area chart data:', data);
+    console.log('All debts:', debtNames);
+    return { data, debtNames };
   };
 
-  // New debt overview chart
-  const getDebtOverviewData = () => {
-    if (!debtSummary?.debts) return [];
+  // Enhanced chart data functions
+  const getDebtComparisonData = () => {
+    if (!debtSummary?.debts || !Array.isArray(debtSummary.debts)) {
+      console.log('No debt comparison data available');
+      return [];
+    }
     
-    const colors = ['#d97706', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#ea580c'];
-    
-    return debtSummary.debts.map((debt, index) => ({
-      name: debt.name,
-      balance: debt.balance,
-      apr: debt.apr,
-      fill: colors[index % colors.length]
+    const data = debtSummary.debts.map((debt, index) => ({
+      name: debt.name || `Debt ${index + 1}`,
+      balance: Number(debt.balance) || 0,
+      apr: Number(debt.apr) || 0,
+      monthlyInterest: Number(debt.monthly_interest) || 0,
+      // Calculate debt-to-income ratio (assuming monthly interest represents burden)
+      riskScore: ((Number(debt.apr) || 0) * (Number(debt.balance) || 0)) / 100000, // Simple risk calculation
+      id: debt.id
     }));
+    
+    console.log('Debt comparison data:', data);
+    return data;
+  };
+
+  const getDebtBumpData = () => {
+    if (!debtSummary?.debts || !Array.isArray(debtSummary.debts)) {
+      console.log('No debt bump data available');
+      return [];
+    }
+    
+    // Create time series data showing debt evolution over payment plan
+    if (!currentPlan?.months || currentPlan.months.length === 0) {
+      // If no plan, show current state
+      return [{
+        month: 0,
+        ...debtSummary.debts.reduce((acc, debt, index) => {
+          acc[debt.name || `Debt ${index + 1}`] = Number(debt.balance) || 0;
+          return acc;
+        }, {} as any)
+      }];
+    }
+    
+    // Create bump chart data showing how debt balances change over time
+    const monthsToShow = Math.min(currentPlan.months.length, 24); // Show up to 24 months
+    const data = [];
+    
+    // Get all debt names
+    const debtNames = Array.from(new Set(
+      currentPlan.months.flatMap(month => 
+        month.allocations?.map(alloc => alloc.name) || []
+      ).filter(Boolean)
+    ));
+    
+    // Track remaining balances for each debt over time
+    const debtBalances = debtSummary.debts.reduce((acc, debt) => {
+      acc[debt.name || debt.id] = Number(debt.balance) || 0;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Calculate balance progression
+    for (let i = 0; i <= monthsToShow; i++) {
+      const monthData: any = { month: i };
+      
+      if (i === 0) {
+        // Initial balances
+        debtNames.forEach(debtName => {
+          const debt = debtSummary.debts.find(d => d.name === debtName);
+          monthData[debtName] = debt ? Number(debt.balance) || 0 : 0;
+        });
+      } else if (i <= currentPlan.months.length) {
+        // Apply payments from previous month
+        const previousMonth = currentPlan.months[i - 1];
+        if (previousMonth && previousMonth.allocations) {
+          previousMonth.allocations.forEach(allocation => {
+            if (allocation.name && debtBalances[allocation.name] !== undefined) {
+              debtBalances[allocation.name] = Math.max(
+                0, 
+                debtBalances[allocation.name] - (Number(allocation.principal_reduction) || 0)
+              );
+            }
+          });
+        }
+        
+        // Set balances for this month
+        debtNames.forEach(debtName => {
+          monthData[debtName] = debtBalances[debtName] || 0;
+        });
+      }
+      
+      data.push(monthData);
+    }
+    
+    console.log('Debt bump chart data:', data);
+    console.log('Debt names:', debtNames);
+    return { data, debtNames };
   };
 
   const formatCurrency = (value: number) => {
+    const numValue = Number(value) || 0;
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
-    }).format(value);
+    }).format(numValue);
+  };
+
+  const formatNumber = (value: number) => {
+    const numValue = Number(value) || 0;
+    return `₹${(numValue / 1000).toFixed(0)}K`;
   };
 
   const downloadSchedule = () => {
@@ -230,16 +377,18 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
     ];
     
     currentPlan.months.forEach(month => {
-      month.allocations.forEach((allocation, index) => {
-        csvData.push([
-          month.month_index.toString(),
-          allocation.name,
-          allocation.payment.toFixed(2),
-          allocation.interest_accrued.toFixed(2),
-          allocation.principal_reduction.toFixed(2),
-          index === 0 ? month.total_paid.toFixed(2) : ''
-        ]);
-      });
+      if (month.allocations && Array.isArray(month.allocations)) {
+        month.allocations.forEach((allocation, index) => {
+          csvData.push([
+            (month.month_index || 0).toString(),
+            allocation.name || '',
+            (Number(allocation.payment) || 0).toFixed(2),
+            (Number(allocation.interest_accrued) || 0).toFixed(2),
+            (Number(allocation.principal_reduction) || 0).toFixed(2),
+            index === 0 ? (Number(month.total_paid) || 0).toFixed(2) : ''
+          ]);
+        });
+      }
     });
     
     const csvContent = csvData.map(row => row.join(',')).join('\n');
@@ -256,8 +405,9 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
     { id: 'balance-over-time', label: 'Balance Over Time', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'monthly-payments', label: 'Monthly Payments', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'interest-vs-principal', label: 'Interest vs Principal', icon: <PieChart className="w-4 h-4" /> },
-    { id: 'payment-allocation', label: 'Payment Allocation', icon: <DollarSign className="w-4 h-4" /> },
-    { id: 'debt-overview', label: 'Debt Overview', icon: <CreditCard className="w-4 h-4" /> }
+    { id: 'payment-allocation', label: 'Payment Allocation', icon: <IndianRupee className="w-4 h-4" /> },
+    { id: 'debt-bump', label: 'Debt Evolution', icon: <TrendingUp className="w-4 h-4" /> },
+    { id: 'debt-comparison', label: 'Debt Comparison', icon: <BarChart2 className="w-4 h-4" /> }
   ];
 
   return (
@@ -304,7 +454,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
               />
               {debtSummary && (
                 <p className="text-xs text-amber-600 mt-1">
-                  Min required: ₹{debtSummary.monthly_minimums.toLocaleString()}
+                  Min required: ₹{(Number(debtSummary.monthly_minimums) || 0).toLocaleString()}
                 </p>
               )}
             </div>
@@ -353,15 +503,15 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
           {debtSummary && (
             <div className="mt-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
               <div className="flex items-center space-x-2">
-                {monthlyBudget >= debtSummary.monthly_minimums ? (
+                {monthlyBudget >= (Number(debtSummary.monthly_minimums) || 0) ? (
                   <CheckCircle className="w-5 h-5 text-green-600" />
                 ) : (
                   <AlertCircle className="w-5 h-5 text-red-600" />
                 )}
                 <span className="text-sm font-medium text-amber-800">
-                  {monthlyBudget >= debtSummary.monthly_minimums
-                    ? `Budget OK: ₹${(monthlyBudget - debtSummary.monthly_minimums).toLocaleString()} available for extra payments`
-                    : `Budget short by ₹${(debtSummary.monthly_minimums - monthlyBudget).toLocaleString()}`
+                  {monthlyBudget >= (Number(debtSummary.monthly_minimums) || 0)
+                    ? `Budget OK: ₹${(monthlyBudget - (Number(debtSummary.monthly_minimums) || 0)).toLocaleString()} available for extra payments`
+                    : `Budget short by ₹${((Number(debtSummary.monthly_minimums) || 0) - monthlyBudget).toLocaleString()}`
                   }
                 </span>
               </div>
@@ -379,19 +529,23 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                   <Calendar className="w-8 h-8 text-amber-700" />
                   <div>
                     <div className="text-sm font-medium text-amber-700">Time to Debt-Free</div>
-                    <div className="text-2xl font-bold text-amber-900">{currentPlan.months_to_debt_free} months</div>
-                    <div className="text-sm text-amber-600">{(currentPlan.months_to_debt_free / 12).toFixed(1)} years</div>
+                    <div className="text-2xl font-bold text-amber-900">
+                      {Number(currentPlan.months_to_debt_free) || 0} months
+                    </div>
+                    <div className="text-sm text-amber-600">
+                      {((Number(currentPlan.months_to_debt_free) || 0) / 12).toFixed(1)} years
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white rounded-lg border border-amber-200 p-6 shadow-sm">
                 <div className="flex items-center space-x-3">
-                  <DollarSign className="w-8 h-8 text-amber-700" />
+                  <IndianRupee className="w-8 h-8 text-amber-700" />
                   <div>
                     <div className="text-sm font-medium text-amber-700">Total Interest</div>
                     <div className="text-2xl font-bold text-amber-900">
-                      {formatCurrency(currentPlan.total_interest_paid)}
+                      {formatCurrency(Number(currentPlan.total_interest_paid) || 0)}
                     </div>
                   </div>
                 </div>
@@ -402,7 +556,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                   <Target className="w-8 h-8 text-amber-700" />
                   <div>
                     <div className="text-sm font-medium text-amber-700">Strategy</div>
-                    <div className="text-xl font-bold text-amber-900">{currentPlan.strategy_name}</div>
+                    <div className="text-xl font-bold text-amber-900">{currentPlan.strategy_name || 'Unknown'}</div>
                   </div>
                 </div>
               </div>
@@ -413,7 +567,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                   <div>
                     <div className="text-sm font-medium text-amber-700">Total Months</div>
                     <div className="text-xl font-bold text-amber-900">
-                      {currentPlan.months.length}
+                      {currentPlan.months?.length || 0}
                     </div>
                     <div className="text-sm text-amber-600">in schedule</div>
                   </div>
@@ -455,7 +609,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                       <AreaChart data={getBalanceOverTimeData()}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
                         <XAxis dataKey="month" stroke="#92400e" />
-                        <YAxis stroke="#92400e" tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                        <YAxis stroke="#92400e" tickFormatter={formatNumber} />
                         <Tooltip formatter={(value) => [formatCurrency(value as number), 'Balance']} />
                         <Area
                           type="monotone"
@@ -473,7 +627,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                       <BarChart data={getMonthlyPaymentData()}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
                         <XAxis dataKey="month" stroke="#92400e" />
-                        <YAxis stroke="#92400e" tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                        <YAxis stroke="#92400e" tickFormatter={formatNumber} />
                         <Tooltip formatter={(value) => [formatCurrency(value as number), '']} />
                         <Legend />
                         <Bar dataKey="interest" stackId="a" fill="#dc2626" name="Interest" />
@@ -505,33 +659,127 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                     </ResponsiveContainer>
                   )}
 
-                  {activeTab === 'payment-allocation' && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getPaymentAllocationData()} layout="horizontal">
-                        <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
-                        <XAxis type="number" stroke="#92400e" tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
-                        <YAxis dataKey="debt" type="category" stroke="#92400e" width={120} />
-                        <Tooltip formatter={(value) => [formatCurrency(value as number), 'Payment']} />
-                        <Bar dataKey="payment" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
+                  {activeTab === 'payment-allocation' && (() => {
+                    const allocationData = getPaymentAllocationData();
+                    const colors = ['#d97706', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#ea580c'];
+                    
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={allocationData.data}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
+                          <XAxis dataKey="month" stroke="#92400e" />
+                          <YAxis stroke="#92400e" tickFormatter={formatNumber} />
+                          <Tooltip 
+                            formatter={(value, name) => [formatCurrency(value as number), name]}
+                            labelFormatter={(month) => `Month ${month}`}
+                          />
+                          <Legend />
+                          {allocationData.debtNames.map((debtName, index) => (
+                            <Area
+                              key={debtName}
+                              type="monotone"
+                              dataKey={debtName}
+                              stackId="1"
+                              stroke={colors[index % colors.length]}
+                              fill={colors[index % colors.length]}
+                              fillOpacity={0.6}
+                            />
+                          ))}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
 
-                  {activeTab === 'debt-overview' && (
+                  {activeTab === 'debt-bump' && (() => {
+                    const bumpData = getDebtBumpData();
+                    const colors = ['#d97706', '#059669', '#dc2626', '#7c3aed', '#0891b2', '#ea580c', '#f59e0b', '#10b981'];
+                    
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={bumpData.data} stackOffset="wiggle">
+                          <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
+                          <XAxis 
+                            dataKey="month" 
+                            stroke="#92400e"
+                            label={{ value: 'Months →', position: 'insideBottom', offset: -10 }}
+                          />
+                          <YAxis 
+                            stroke="#92400e" 
+                            tickFormatter={formatNumber}
+                            label={{ value: '← Balance', angle: -90, position: 'insideLeft' }}
+                          />
+                          <Tooltip 
+                            formatter={(value, name) => [formatCurrency(value as number), name]}
+                            labelFormatter={(month) => `Month ${month}`}
+                            contentStyle={{
+                              backgroundColor: 'white',
+                              border: '1px solid #fbbf24',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            }}
+                          />
+                          <Legend 
+                            wrapperStyle={{
+                              paddingTop: '20px'
+                            }}
+                          />
+                          {bumpData.debtNames && bumpData.debtNames.map((debtName, index) => (
+                            <Area
+                              key={debtName}
+                              type="monotone"
+                              dataKey={debtName}
+                              stackId="1"
+                              stroke={colors[index % colors.length]}
+                              fill={colors[index % colors.length]}
+                              fillOpacity={0.7}
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+
+                  {activeTab === 'debt-comparison' && (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getDebtOverviewData()}>
+                      <ComposedChart data={getDebtComparisonData()}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
                         <XAxis dataKey="name" stroke="#92400e" />
-                        <YAxis stroke="#92400e" tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`} />
+                        <YAxis yAxisId="left" stroke="#92400e" tickFormatter={formatNumber} />
+                        <YAxis yAxisId="right" orientation="right" stroke="#dc2626" />
                         <Tooltip 
-                          formatter={(value, name) => [
-                            formatCurrency(value as number), 
-                            name === 'balance' ? 'Balance' : 'APR'
-                          ]}
-                          labelFormatter={(label) => `Debt: ${label}`}
+                          formatter={(value, name) => {
+                            if (name === 'Balance') return [formatCurrency(value as number), name];
+                            if (name === 'Monthly Interest') return [formatCurrency(value as number), name];
+                            if (name === 'APR') return [`${value}%`, name];
+                            return [value, name];
+                          }}
                         />
-                        <Bar dataKey="balance" name="Balance" />
-                      </BarChart>
+                        <Legend />
+                        <Bar 
+                          yAxisId="left" 
+                          dataKey="balance" 
+                          fill="#059669" 
+                          name="Balance" 
+                          opacity={0.8}
+                        />
+                        <Bar 
+                          yAxisId="left" 
+                          dataKey="monthlyInterest" 
+                          fill="#dc2626" 
+                          name="Monthly Interest"
+                          opacity={0.8}
+                        />
+                        <Line 
+                          yAxisId="right" 
+                          type="monotone" 
+                          dataKey="apr" 
+                          stroke="#d97706" 
+                          strokeWidth={3}
+                          name="APR"
+                          dot={{ fill: '#d97706', strokeWidth: 2, r: 6 }}
+                        />
+                      </ComposedChart>
                     </ResponsiveContainer>
                   )}
                 </div>
@@ -544,7 +792,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                 <div className="flex items-center space-x-4">
                   <h3 className="text-lg font-semibold text-amber-900">Payment Schedule</h3>
                   <div className="text-sm text-amber-600">
-                    Total Months: {currentPlan.months.length}
+                    Total Months: {currentPlan.months?.length || 0}
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -592,29 +840,30 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-amber-100">
-                    {(showAllMonths ? currentPlan.months : currentPlan.months.slice(0, 12)).map((month) =>
-                      month.allocations.map((allocation, allocIndex) => (
+                    {currentPlan.months && Array.isArray(currentPlan.months) && 
+                     (showAllMonths ? currentPlan.months : currentPlan.months.slice(0, 12)).map((month) =>
+                      month.allocations && Array.isArray(month.allocations) && month.allocations.map((allocation, allocIndex) => (
                         <tr key={`${month.month_index}-${allocIndex}`} className="hover:bg-amber-50">
                           {allocIndex === 0 && (
                             <td rowSpan={month.allocations.length} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-900 border-r border-amber-100">
-                              {month.month_index}
+                              {month.month_index || 0}
                             </td>
                           )}
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-800">
-                            {allocation.name}
+                            {allocation.name || ''}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-900 text-right">
-                            {formatCurrency(allocation.payment)}
+                            {formatCurrency(Number(allocation.payment) || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600 text-right">
-                            {formatCurrency(allocation.interest_accrued)}
+                            {formatCurrency(Number(allocation.interest_accrued) || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right">
-                            {formatCurrency(allocation.principal_reduction)}
+                            {formatCurrency(Number(allocation.principal_reduction) || 0)}
                           </td>
                           {allocIndex === 0 && (
                             <td rowSpan={month.allocations.length} className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-900 text-right border-l border-amber-100">
-                              {formatCurrency(month.total_paid)}
+                              {formatCurrency(Number(month.total_paid) || 0)}
                             </td>
                           )}
                         </tr>
@@ -624,7 +873,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                 </table>
               </div>
 
-              {!showAllMonths && currentPlan.months.length > 12 && (
+              {!showAllMonths && currentPlan.months && currentPlan.months.length > 12 && (
                 <div className="px-6 py-4 border-t border-amber-200 text-center text-sm text-amber-600">
                   Showing first 12 months of {currentPlan.months.length} total months. 
                   Check "Show all months" to see the complete schedule.
@@ -659,19 +908,19 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-amber-100">
-                  {debtSummary.debts.map((debt) => (
+                  {debtSummary.debts && Array.isArray(debtSummary.debts) && debtSummary.debts.map((debt) => (
                     <tr key={debt.id} className="hover:bg-amber-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-amber-900">
-                        {debt.name}
+                        {debt.name || 'Unnamed Debt'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-900 text-right">
-                        {formatCurrency(debt.balance)}
+                        {formatCurrency(Number(debt.balance) || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-900 text-right">
-                        {debt.apr.toFixed(2)}%
+                        {(Number(debt.apr) || 0).toFixed(2)}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-amber-900 text-right">
-                        {formatCurrency(debt.monthly_interest)}
+                        {formatCurrency(Number(debt.monthly_interest) || 0)}
                       </td>
                     </tr>
                   ))}
@@ -679,10 +928,10 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
               </table>
             </div>
           </div>
-          )}
-          </main>
-        </div>
-      );
-    };
-    
-    export default RepaymentPlans;
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default RepaymentPlans;

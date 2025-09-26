@@ -12,8 +12,25 @@ import {
   PieChart,
   AlertCircle,
   X,
-  Check
+  Check,
+  BarChart3,
+  IndianRupee
 } from 'lucide-react';
+import {
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ComposedChart,
+  Line
+} from 'recharts';
 
 interface DebtManagementProps {
   onNavigate?: (page: string) => void;
@@ -335,6 +352,49 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     }).format(amount);
   };
 
+  // Chart data functions
+  const getFinancialOverviewData = () => {
+    if (!summary) return [];
+    
+    const income = summary.user_profile.monthly_income;
+    const expenses = summary.user_profile.monthly_expenses;
+    const debtInterest = summary.debt_summary.total_monthly_interest;
+    const availableBudget = Math.max(0, income - expenses - debtInterest);
+    
+    return [
+      { name: 'Available Budget', value: availableBudget, fill: '#059669' },
+      { name: 'Regular Expenses', value: expenses, fill: '#d97706' },
+      { name: 'Debt Interest', value: debtInterest, fill: '#dc2626' }
+    ];
+  };
+
+  const getDebtBreakdownData = () => {
+    if (!summary || summary.debts.length === 0) return [];
+    
+    const colors = ['#dc2626', '#d97706', '#059669', '#7c3aed', '#0891b2', '#ea580c'];
+    
+    return summary.debts.map((debt, index) => ({
+      name: debt.name.length > 12 ? debt.name.substring(0, 12) + '...' : debt.name,
+      fullName: debt.name,
+      amount: debt.total_amount,
+      interest_rate: debt.interest_rate,
+      monthly_interest: debt.total_amount * (debt.interest_rate / 100 / 12),
+      fill: colors[index % colors.length]
+    }));
+  };
+
+  const getDebtComparisonData = () => {
+    if (!summary || summary.debts.length === 0) return [];
+    
+    return summary.debts.map(debt => ({
+      name: debt.name.length > 10 ? debt.name.substring(0, 10) + '...' : debt.name,
+      fullName: debt.name,
+      balance: debt.total_amount,
+      interest_rate: debt.interest_rate,
+      monthly_interest: debt.total_amount * (debt.interest_rate / 100 / 12)
+    }));
+  };
+
   console.log('🎨 Rendering component - Loading:', loading, 'Summary:', !!summary, 'ShowModal:', showFinancialProfileModal);
 
   if (loading) {
@@ -385,7 +445,9 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-amber-800 hidden sm:block">Welcome, {user?.firstName}!</span>
+              <span className="text-amber-800 hidden sm:block">
+                {user?.firstName ? `Hello, ${user.firstName}!` : 'Welcome!'}
+              </span>
               <UserButton afterSignOutUrl="/" />
             </div>
           </div>
@@ -400,7 +462,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             <div className="bg-white rounded-lg border border-amber-200 p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-medium text-amber-700">Monthly Income</h3>
-                <DollarSign className="w-5 h-5 text-green-600" />
+                <IndianRupee className="w-5 h-5 text-green-600" />
               </div>
               <p className="text-2xl font-bold text-amber-900">
                 {formatCurrency(summary.user_profile.monthly_income)}
@@ -433,6 +495,186 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
               </p>
             </div>
           </div>
+
+          {/* Financial Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Financial Overview Pie Chart */}
+            <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
+              <div className="px-6 py-4 border-b border-amber-200">
+                <h3 className="text-lg font-semibold text-amber-900 flex items-center">
+                  <PieChart className="w-5 h-5 mr-2 text-amber-700" />
+                  Monthly Budget Breakdown
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={getFinancialOverviewData()}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
+                      >
+                        {getFinancialOverviewData().map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [formatCurrency(value as number), '']} />
+                      <Legend />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Debt Distribution Chart */}
+            <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
+              <div className="px-6 py-4 border-b border-amber-200">
+                <h3 className="text-lg font-semibold text-amber-900 flex items-center">
+                  <CreditCard className="w-5 h-5 mr-2 text-amber-700" />
+                  Debt Distribution
+                </h3>
+              </div>
+              <div className="p-6">
+                {summary.debts.length > 0 ? (
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={getDebtBreakdownData()}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="amount"
+                          label={false}
+                        >
+                          {getDebtBreakdownData().map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [formatCurrency(value as number), 'Amount']}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload.length > 0) {
+                              return payload[0].payload.fullName;
+                            }
+                            return label;
+                          }}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: '12px' }}
+                          iconType="circle"
+                        />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-80 flex items-center justify-center text-amber-600">
+                    <div className="text-center">
+                      <CreditCard className="w-16 h-16 mx-auto mb-4 text-amber-300" />
+                      <p>No debts to display</p>
+                      <p className="text-sm">Add your first debt to see the breakdown</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Debt Comparison Bar Chart */}
+          {summary.debts.length > 0 && (
+            <div className="bg-white rounded-lg border border-amber-200 shadow-sm mb-8">
+              <div className="px-6 py-4 border-b border-amber-200">
+                <h3 className="text-lg font-semibold text-amber-900 flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2 text-amber-700" />
+                  Debt Analysis: Balance vs Interest Impact
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="h-96">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart 
+                      data={getDebtComparisonData()}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#fbbf24" opacity={0.3} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#92400e" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        fontSize={12}
+                      />
+                      <YAxis 
+                        yAxisId="left" 
+                        stroke="#92400e" 
+                        tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}K`}
+                        fontSize={12}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right" 
+                        stroke="#dc2626"
+                        fontSize={12}
+                      />
+                      <Tooltip 
+                        formatter={(value, name) => {
+                          if (name === 'Balance') return [formatCurrency(value as number), name];
+                          if (name === 'Monthly Interest') return [formatCurrency(value as number), name];
+                          if (name === 'Interest Rate') return [`${value}%`, name];
+                          return [value, name];
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload.length > 0) {
+                            return payload[0].payload.fullName;
+                          }
+                          return label;
+                        }}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #fbbf24',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Bar 
+                        yAxisId="left" 
+                        dataKey="balance" 
+                        fill="#059669" 
+                        name="Balance" 
+                        opacity={0.8}
+                      />
+                      <Bar 
+                        yAxisId="left" 
+                        dataKey="monthly_interest" 
+                        fill="#dc2626" 
+                        name="Monthly Interest"
+                        opacity={0.8}
+                      />
+                      <Line 
+                        yAxisId="right" 
+                        type="monotone" 
+                        dataKey="interest_rate" 
+                        stroke="#d97706" 
+                        strokeWidth={3}
+                        name="Interest Rate"
+                        dot={{ fill: '#d97706', strokeWidth: 2, r: 6 }}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Debt Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -578,8 +820,8 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
 
       {/* Financial Profile Modal */}
       {showFinancialProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out scale-100 translate-y-0 animate-slideInUp">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-amber-900">Set Up Your Financial Profile</h3>
             </div>
@@ -598,7 +840,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                     ...financialProfileData, 
                     monthly_income: parseFloat(e.target.value) || 0
                   })}
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                   placeholder="e.g., 50000"
                 />
               </div>
@@ -612,7 +854,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                     ...financialProfileData, 
                     monthly_expenses: parseFloat(e.target.value) || 0
                   })}
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                   placeholder="e.g., 30000"
                 />
               </div>
@@ -621,11 +863,11 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={handleUpdateFinancialProfile}
-                className="flex-1 bg-amber-600 text-white py-2 px-4 rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 bg-amber-600 text-white py-2 px-4 rounded-lg hover:bg-amber-700 transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2"
               >
                 <Check className="w-4 h-4" />
                 <span>Save Profile</span>
-                </button>
+              </button>
             </div>
           </div>
         </div>
@@ -633,8 +875,8 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
 
       {/* Add/Edit Debt Modal */}
       {(showAddModal || editingDebt) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out scale-100 translate-y-0 animate-slideInUp">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-amber-900">
                 {editingDebt ? 'Edit Debt' : 'Add New Debt'}
@@ -645,7 +887,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   setEditingDebt(null);
                   resetForm();
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 transform hover:scale-110"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -658,7 +900,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                   placeholder="e.g., Credit Card Debt, Personal Loan"
                 />
               </div>
@@ -669,7 +911,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   type="number"
                   value={formData.total_amount}
                   onChange={(e) => setFormData({...formData, total_amount: parseFloat(e.target.value) || 0})}
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                   placeholder="e.g., 50000"
                 />
               </div>
@@ -681,7 +923,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   step="0.01"
                   value={formData.interest_rate}
                   onChange={(e) => setFormData({...formData, interest_rate: parseFloat(e.target.value) || 0})}
-                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
                   placeholder="e.g., 18.5"
                 />
               </div>
@@ -694,13 +936,13 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   setEditingDebt(null);
                   resetForm();
                 }}
-                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-all duration-200 transform hover:scale-105"
               >
                 Cancel
               </button>
               <button
                 onClick={editingDebt ? handleEditDebt : handleAddDebt}
-                className="flex-1 bg-amber-600 text-white py-2 px-4 rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 bg-amber-600 text-white py-2 px-4 rounded-lg hover:bg-amber-700 transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2"
               >
                 <Check className="w-4 h-4" />
                 <span>{editingDebt ? 'Update' : 'Add'} Debt</span>

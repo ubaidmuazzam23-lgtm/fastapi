@@ -109,7 +109,7 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50">
-      {/* Header - Fixed Navigation Overlapping */}
+      {/* Header - Original Navigation with Updated Text */}
       <header className="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-3">
@@ -121,7 +121,7 @@ const LandingPage = () => {
             {/* Desktop Navigation - Better responsive design */}
             <nav className="hidden xl:flex space-x-3 text-sm">
               <a href="#debt-management" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">Debt Management</a>
-              <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">Chat Advisor</a>
+              <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">AI Assistant</a>
               <a href="#repayment-plan" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">Repayment Plan</a>
               <a href="#what-if" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">What If</a>
               <a href="#educational-hub" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-2 py-1">Educational Hub</a>
@@ -132,7 +132,7 @@ const LandingPage = () => {
             {/* Medium screens navigation - condensed */}
             <nav className="hidden lg:flex xl:hidden space-x-2 text-xs">
               <a href="#debt-management" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">Debt Mgmt</a>
-              <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">Chat</a>
+              <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">AI Assistant</a>
               <a href="#repayment-plan" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">Repayment</a>
               <a href="#what-if" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">What If</a>
               <a href="#educational-hub" className="text-amber-800 hover:text-amber-600 transition-colors whitespace-nowrap px-1">Education</a>
@@ -168,7 +168,7 @@ const LandingPage = () => {
             <div className="lg:hidden py-4 border-t border-amber-100">
               <div className="flex flex-col space-y-3">
                 <a href="#debt-management" className="text-amber-800 hover:text-amber-600 py-2">Debt Management</a>
-                <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 py-2">Chat Advisor</a>
+                <a href="#chat-advisor" className="text-amber-800 hover:text-amber-600 py-2">AI Assistant</a>
                 <a href="#repayment-plan" className="text-amber-800 hover:text-amber-600 py-2">Repayment Plan</a>
                 <a href="#what-if" className="text-amber-800 hover:text-amber-600 py-2">What If</a>
                 <a href="#educational-hub" className="text-amber-800 hover:text-amber-600 py-2">Educational Hub</a>
@@ -190,7 +190,6 @@ const LandingPage = () => {
         </div>
       </header>
 
-      {/* Rest of the sections remain the same... */}
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -212,7 +211,10 @@ const LandingPage = () => {
                     <ChevronRight className="w-5 h-5 ml-2" />
                   </button>
                 </SignUpButton>
-                <button className="border-2 border-amber-700 text-amber-700 hover:bg-amber-700 hover:text-white px-8 py-4 rounded-lg text-lg font-medium transition-all">
+                <button 
+                  className="border-2 border-amber-700 text-amber-700 hover:bg-amber-700 hover:text-white px-8 py-4 rounded-lg text-lg font-medium transition-all"
+                  onClick={() => document.getElementById('demo-video').scrollIntoView({ behavior: 'smooth' })}
+                >
                   Watch Demo
                 </button>
               </div>
@@ -262,8 +264,144 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Video Demo Section - Two Column Layout */}
+      <section id="demo-video" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left Column - Text Content */}
+            <div className="space-y-8">
+              <div>
+                <div className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 rounded-full text-sm font-semibold mb-6">
+                  ⚠️ REALITY CHECK
+                </div>
+                <h2 className="text-4xl lg:text-5xl font-bold text-amber-900 mb-6 leading-tight">
+                  The Harsh Truth About 
+                  <span className="text-red-600 block">Saving Money</span>
+                </h2>
+                <p className="text-xl text-gray-700 mb-6 leading-relaxed">
+                  <span className="font-semibold">(Why Most People Get It Wrong)</span>
+                </p>
+                <p className="text-lg text-gray-600 leading-relaxed">
+                  Discover the hidden mistakes that keep you trapped in debt and learn the counterintuitive strategies that actually work for building lasting wealth.
+                </p>
+              </div>
+
+              {/* Key Statistics */}
+              <div className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center font-bold">
+                    78%
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Live Paycheck to Paycheck</h4>
+                    <p className="text-gray-600 text-sm">Even high earners struggle with traditional saving advice</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center font-bold text-sm">
+                    23Y
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Average Debt Freedom Time</h4>
+                    <p className="text-gray-600 text-sm">Using conventional methods vs. 3-5 years with smart strategies</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center font-bold text-sm">
+                    ₹18L
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Average Interest Saved</h4>
+                    <p className="text-gray-600 text-sm">When you prioritize debts using data-driven strategies</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Key Learning Points */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                <h4 className="font-semibold text-amber-900 mb-4">What You'll Learn:</h4>
+                <ul className="space-y-2 text-amber-800">
+                  <li className="flex items-start">
+                    <span className="text-amber-600 mr-2">•</span>
+                    <span>Why "just save more" fails for 78% of people</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-amber-600 mr-2">•</span>
+                    <span>The debt payoff method banks don't want you to know</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-amber-600 mr-2">•</span>
+                    <span>Psychology-based strategies for automatic wealth building</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-amber-600 mr-2">•</span>
+                    <span>How to prioritize debts for maximum interest savings</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* CTA */}
+              <div className="space-y-4">
+                <SignUpButton mode="modal">
+                  <button className="w-full bg-gradient-to-r from-amber-600 to-orange-500 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-amber-700 hover:to-orange-600 transition-all">
+                    Start Your Financial Transformation
+                  </button>
+                </SignUpButton>
+                <p className="text-center text-gray-500 text-sm">
+                  Free 14-day trial • No credit card required • Cancel anytime
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column - Aesthetic Video Frame */}
+            <div className="relative">
+              {/* Decorative Elements */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl opacity-20 blur-lg"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl opacity-30"></div>
+              
+              {/* Main Video Container */}
+              <div className="relative bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-white">
+                {/* Video */}
+                <div className="aspect-video bg-black">
+                  <video 
+                    className="w-full h-full object-cover"
+                    controls
+                    preload="metadata"
+                    muted
+                    playsInline
+                    onLoadStart={() => console.log('Video loading started')}
+                    onCanPlay={() => console.log('Video can play')}
+                    onError={(e) => console.log('Video error:', e)}
+                  >
+                    <source src="/videos/video.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+                
+                {/* Video Title Bar */}
+                <div className="bg-gray-50 px-4 py-3 border-t">
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    Why 78% of People Never Escape the Debt Trap
+                  </h3>
+                  <p className="text-gray-600 text-xs mt-1">
+                    A comprehensive analysis of financial myths and evidence-based strategies
+                  </p>
+                </div>
+              </div>
+              
+              {/* Floating Badge */}
+              <div className="absolute -top-3 -right-3 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                Must Watch
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className="py-20 bg-gradient-to-br from-amber-50 to-orange-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold text-amber-900 mb-4">
