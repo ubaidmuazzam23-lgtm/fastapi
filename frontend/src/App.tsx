@@ -9,7 +9,7 @@ import DocumentAnalyzer from './pages/DocumentAnalysis';
 import CreditScore from './pages/CreditScore';
 import EducationHub from './pages/EducationHub'; // Add this import
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
