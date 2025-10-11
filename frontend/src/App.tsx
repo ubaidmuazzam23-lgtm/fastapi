@@ -7,9 +7,10 @@ import RepaymentPlan from './pages/RepaymentPlans';
 import WhatIfScenarios from './pages/WhatIfScenarios';
 import DocumentAnalyzer from './pages/DocumentAnalysis';
 import CreditScore from './pages/CreditScore';
-import EducationHub from './pages/EducationHub'; // Add this import
+import EducationHub from './pages/EducationHub';
+import LoanRecommendations from './pages/LoanRecommendations'; // Add this import
 
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -34,8 +35,10 @@ function App() {
         return <DocumentAnalyzer onNavigate={handleNavigation} />;
       case 'credit-score':
         return <CreditScore onNavigate={handleNavigation} />;
-      case 'educational-hub': // Add this case
+      case 'educational-hub':
         return <EducationHub onNavigate={handleNavigation} />;
+      case 'loan-recommendations': // Add this case
+        return <LoanRecommendations />;
       case 'dashboard':
       default:
         return <Dashboard onNavigate={handleNavigation} />;

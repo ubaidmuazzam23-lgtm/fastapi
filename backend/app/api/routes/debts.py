@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
-
 from app.models.user import User
 from app.models.debt import Debt
 from app.schemas.debt import DebtCreate, DebtUpdate, DebtResponse, UserFinancialProfile
 from app.services.debt_service import DebtService
+from app.services.notification_service import NotificationService
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/debt", tags=["debt-management"])
@@ -51,6 +51,15 @@ async def create_debt(
     """Create a new debt"""
     try:
         debt = await DebtService.create_debt(current_user.clerk_user_id, debt_data)
+        
+        # Send debt creation notification email
+        await NotificationService.send_debt_created_email(
+            user_id=current_user.clerk_user_id,
+            user_name=current_user.first_name or "User",
+            debt_name=debt.name,
+            debt_amount=debt.total_amount
+        )
+        
         return DebtResponse(**debt.to_dict())
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

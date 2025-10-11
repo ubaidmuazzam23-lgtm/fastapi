@@ -14,7 +14,8 @@ import {
   X,
   Check,
   BarChart3,
-  IndianRupee
+  IndianRupee,
+  Calendar
 } from 'lucide-react';
 import {
   PieChart as RechartsPieChart,
@@ -41,6 +42,11 @@ interface Debt {
   name: string;
   total_amount: number;
   interest_rate: number;
+  min_payment: number;
+  loan_type: 'revolving' | 'fixed_term';
+  original_tenure_months?: number | null;
+  remaining_months?: number | null;
+  fixed_emi?: number | null;
 }
 
 interface DebtSummary {
@@ -52,6 +58,7 @@ interface DebtSummary {
   debt_summary: {
     total_debt_amount: number;
     total_monthly_interest: number;
+    total_required_emi: number;
     debt_count: number;
     debt_to_income_ratio: number;
     average_interest_rate: number;
@@ -63,6 +70,10 @@ interface DebtFormData {
   name: string;
   total_amount: number;
   interest_rate: number;
+  min_payment: number;
+  loan_type: 'revolving' | 'fixed_term';
+  original_tenure_months?: number;
+  remaining_months?: number;
 }
 
 interface FinancialProfileData {
@@ -81,14 +92,24 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
   const [formData, setFormData] = useState<DebtFormData>({
     name: '',
     total_amount: 0,
-    interest_rate: 0
+    interest_rate: 0,
+    min_payment: 0,
+    loan_type: 'revolving',
+    original_tenure_months: undefined,
+    remaining_months: undefined
   });
   const [financialProfileData, setFinancialProfileData] = useState<FinancialProfileData>({
     monthly_income: 0,
     monthly_expenses: 0
   });
 
-  // Check if user has set up financial profile
+  const calculateEMI = (principal: number, rate: number, months: number): number => {
+    if (months <= 0 || principal <= 0) return 0;
+    const r = (rate / 100) / 12;
+    if (r === 0) return principal / months;
+    return principal * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1);
+  };
+
   useEffect(() => {
     console.log('Component mounted, checking financial profile...');
     checkFinancialProfile();
@@ -116,17 +137,12 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
       });
       
       console.log('📊 Response status:', response.status);
-      console.log('📊 Response ok:', response.ok);
       
       if (response.ok) {
         const profile = await response.json();
         console.log('✅ Profile data received:', profile);
-        console.log('📊 Profile details:', JSON.stringify(profile, null, 2));
-        console.log('💰 Income:', profile.monthly_income, 'Expenses:', profile.monthly_expenses);
-        
         setFinancialProfileData(profile);
         
-        // If no income/expenses set, show financial profile modal
         if (profile.monthly_income === 0 && profile.monthly_expenses === 0) {
           console.log('💡 No financial profile set, showing modal');
           setShowFinancialProfileModal(true);
@@ -136,15 +152,12 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         }
       } else {
         console.log('❌ Response not ok:', response.status);
-        const errorText = await response.text();
-        console.log('❌ Error response:', errorText);
         setShowFinancialProfileModal(true);
       }
     } catch (error) {
       console.error('❌ Error in checkFinancialProfile:', error);
       setShowFinancialProfileModal(true);
     } finally {
-      console.log('🏁 Setting loading to false');
       setLoading(false);
     }
   };
@@ -153,8 +166,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     console.log('💾 Updating financial profile...', financialProfileData);
     try {
       const token = await getToken();
-      console.log('✅ Got token for profile update:', token ? 'Yes' : 'No');
-      
       const response = await fetch('http://localhost:8000/api/v1/debt/financial-profile', {
         method: 'POST',
         headers: {
@@ -164,15 +175,10 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         body: JSON.stringify(financialProfileData),
       });
       
-      console.log('📊 Profile update response status:', response.status);
-      
       if (response.ok) {
         console.log('✅ Profile updated successfully');
         setShowFinancialProfileModal(false);
         await fetchDebtSummary();
-      } else {
-        const errorText = await response.text();
-        console.log('❌ Profile update failed:', errorText);
       }
     } catch (error) {
       console.error('❌ Error updating financial profile:', error);
@@ -183,15 +189,12 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     console.log('🔄 Starting fetchDebtSummary...');
     try {
       const token = await getToken();
-      console.log('✅ Got token for summary:', token ? 'Yes' : 'No');
       
       if (!token) {
-        console.log('❌ No token for summary request');
         setDefaultSummary();
         return;
       }
       
-      console.log('📡 Making request to debt summary endpoint...');
       const response = await fetch('http://localhost:8000/api/v1/debt/summary', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -199,18 +202,11 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         },
       });
       
-      console.log('📊 Summary response status:', response.status);
-      console.log('📊 Summary response ok:', response.ok);
-      
       if (response.ok) {
         const data = await response.json();
         console.log('✅ Summary data received:', data);
-        console.log('📊 Summary details:', JSON.stringify(data, null, 2));
         setSummary(data);
       } else {
-        console.log('❌ Summary response not ok:', response.status);
-        const errorText = await response.text();
-        console.log('❌ Summary error response:', errorText);
         setDefaultSummary();
       }
     } catch (error) {
@@ -220,7 +216,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
   };
 
   const setDefaultSummary = () => {
-    console.log('🔧 Setting default summary');
     setSummary({
       user_profile: {
         monthly_income: financialProfileData.monthly_income || 0,
@@ -230,6 +225,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
       debt_summary: {
         total_debt_amount: 0,
         total_monthly_interest: 0,
+        total_required_emi: 0,
         debt_count: 0,
         debt_to_income_ratio: 0,
         average_interest_rate: 0
@@ -251,16 +247,11 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         body: JSON.stringify(formData),
       });
       
-      console.log('Add debt response status:', response.status);
-      
       if (response.ok) {
         console.log('✅ Debt added successfully');
         setShowAddModal(false);
         resetForm();
         await fetchDebtSummary();
-      } else {
-        const errorText = await response.text();
-        console.log('❌ Add debt failed:', errorText);
       }
     } catch (error) {
       console.error('❌ Error adding debt:', error);
@@ -270,7 +261,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
   const handleEditDebt = async () => {
     if (!editingDebt) return;
     
-    console.log('✏️ Editing debt:', editingDebt.id, formData);
     try {
       const token = await getToken();
       const response = await fetch(`http://localhost:8000/api/v1/debt/${editingDebt.id}`, {
@@ -282,16 +272,11 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         body: JSON.stringify(formData),
       });
       
-      console.log('Edit debt response status:', response.status);
-      
       if (response.ok) {
         console.log('✅ Debt updated successfully');
         setEditingDebt(null);
         resetForm();
         await fetchDebtSummary();
-      } else {
-        const errorText = await response.text();
-        console.log('❌ Edit debt failed:', errorText);
       }
     } catch (error) {
       console.error('❌ Error updating debt:', error);
@@ -301,7 +286,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
   const handleDeleteDebt = async (debtId: string) => {
     if (!window.confirm('Are you sure you want to delete this debt?')) return;
     
-    console.log('🗑️ Deleting debt:', debtId);
     try {
       const token = await getToken();
       const response = await fetch(`http://localhost:8000/api/v1/debt/${debtId}`, {
@@ -311,14 +295,9 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         },
       });
       
-      console.log('Delete debt response status:', response.status);
-      
       if (response.ok) {
         console.log('✅ Debt deleted successfully');
         await fetchDebtSummary();
-      } else {
-        const errorText = await response.text();
-        console.log('❌ Delete debt failed:', errorText);
       }
     } catch (error) {
       console.error('❌ Error deleting debt:', error);
@@ -326,21 +305,27 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
   };
 
   const resetForm = () => {
-    console.log('🔄 Resetting form');
     setFormData({
       name: '',
       total_amount: 0,
-      interest_rate: 0
+      interest_rate: 0,
+      min_payment: 0,
+      loan_type: 'revolving',
+      original_tenure_months: undefined,
+      remaining_months: undefined
     });
   };
 
   const openEditModal = (debt: Debt) => {
-    console.log('✏️ Opening edit modal for debt:', debt);
     setEditingDebt(debt);
     setFormData({
       name: debt.name,
       total_amount: debt.total_amount,
-      interest_rate: debt.interest_rate
+      interest_rate: debt.interest_rate,
+      min_payment: debt.min_payment,
+      loan_type: debt.loan_type,
+      original_tenure_months: debt.original_tenure_months || undefined,
+      remaining_months: debt.remaining_months || undefined
     });
   };
 
@@ -352,7 +337,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     }).format(amount);
   };
 
-  // Chart data functions
   const getFinancialOverviewData = () => {
     if (!summary) return [];
     
@@ -395,8 +379,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     }));
   };
 
-  console.log('🎨 Rendering component - Loading:', loading, 'Summary:', !!summary, 'ShowModal:', showFinancialProfileModal);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50 flex items-center justify-center">
@@ -412,7 +394,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
           <div className="text-red-600 mb-4">Error loading debt data</div>
           <button 
             onClick={() => {
-              console.log('🔄 Retry button clicked');
               setLoading(true);
               checkFinancialProfile();
             }}
@@ -427,7 +408,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50">
-      {/* Header */}
       <header className="bg-white border-b border-amber-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -454,10 +434,8 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         </div>
       </header>
 
-      {/* Show content only if we have summary data */}
       {summary && (
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Financial Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-lg border border-amber-200 p-6">
               <div className="flex items-center justify-between mb-2">
@@ -496,9 +474,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Financial Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Financial Overview Pie Chart */}
             <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
               <div className="px-6 py-4 border-b border-amber-200">
                 <h3 className="text-lg font-semibold text-amber-900 flex items-center">
@@ -532,7 +508,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Debt Distribution Chart */}
             <div className="bg-white rounded-lg border border-amber-200 shadow-sm">
               <div className="px-6 py-4 border-b border-amber-200">
                 <h3 className="text-lg font-semibold text-amber-900 flex items-center">
@@ -568,10 +543,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                             return label;
                           }}
                         />
-                        <Legend 
-                          wrapperStyle={{ fontSize: '12px' }}
-                          iconType="circle"
-                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} iconType="circle" />
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   </div>
@@ -588,7 +560,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Debt Comparison Bar Chart */}
           {summary.debts.length > 0 && (
             <div className="bg-white rounded-lg border border-amber-200 shadow-sm mb-8">
               <div className="px-6 py-4 border-b border-amber-200">
@@ -646,20 +617,8 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                         }}
                       />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
-                      <Bar 
-                        yAxisId="left" 
-                        dataKey="balance" 
-                        fill="#059669" 
-                        name="Balance" 
-                        opacity={0.8}
-                      />
-                      <Bar 
-                        yAxisId="left" 
-                        dataKey="monthly_interest" 
-                        fill="#dc2626" 
-                        name="Monthly Interest"
-                        opacity={0.8}
-                      />
+                      <Bar yAxisId="left" dataKey="balance" fill="#059669" name="Balance" opacity={0.8} />
+                      <Bar yAxisId="left" dataKey="monthly_interest" fill="#dc2626" name="Monthly Interest" opacity={0.8} />
                       <Line 
                         yAxisId="right" 
                         type="monotone" 
@@ -676,7 +635,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
           )}
 
-          {/* Debt Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-lg border border-amber-200 p-6">
               <h3 className="text-lg font-semibold text-amber-900 mb-4">Debt Overview</h3>
@@ -688,6 +646,10 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                 <div className="flex justify-between">
                   <span className="text-amber-700">Monthly Interest:</span>
                   <span className="font-bold text-red-600">{formatCurrency(summary.debt_summary.total_monthly_interest)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-700">Required EMI:</span>
+                  <span className="font-bold text-orange-600">{formatCurrency(summary.debt_summary.total_required_emi)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-amber-700">Number of Debts:</span>
@@ -730,7 +692,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Debt List */}
           <div className="bg-white rounded-lg border border-amber-200">
             <div className="px-6 py-4 border-b border-amber-200">
               <div className="flex items-center justify-between">
@@ -761,8 +722,14 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                           <div className="flex items-center space-x-3 mb-2">
                             <CreditCard className="w-5 h-5 text-amber-600" />
                             <h4 className="font-semibold text-amber-900">{debt.name}</h4>
+                            {debt.loan_type === 'fixed_term' && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Fixed Term
+                              </span>
+                            )}
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-amber-600">Total Amount:</span>
                               <div className="font-semibold">{formatCurrency(debt.total_amount)}</div>
@@ -777,7 +744,22 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                                 {formatCurrency(debt.total_amount * (debt.interest_rate / 100 / 12))}
                               </div>
                             </div>
+                            {debt.loan_type === 'fixed_term' && debt.remaining_months && (
+                              <div>
+                                <span className="text-amber-600">Remaining Tenure:</span>
+                                <div className="font-semibold text-blue-600">
+                                  {debt.remaining_months} months
+                                </div>
+                              </div>
+                            )}
                           </div>
+                          {debt.loan_type === 'fixed_term' && debt.fixed_emi && (
+                            <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                              <span className="text-xs text-blue-700">
+                                Required EMI: <strong>{formatCurrency(debt.fixed_emi)}/month</strong>
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
@@ -801,7 +783,6 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Alert for negative budget */}
           {summary.user_profile.available_budget < 0 && (
             <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center space-x-2">
@@ -818,10 +799,9 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Financial Profile Modal */}
       {showFinancialProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out scale-100 translate-y-0 animate-slideInUp">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out scale-100 translate-y-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-amber-900">Set Up Your Financial Profile</h3>
             </div>
@@ -873,10 +853,9 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Add/Edit Debt Modal */}
       {(showAddModal || editingDebt) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 transform transition-all duration-300 ease-out scale-100 translate-y-0 animate-slideInUp">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto transform transition-all duration-300 ease-out scale-100 translate-y-0">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-amber-900">
                 {editingDebt ? 'Edit Debt' : 'Add New Debt'}
@@ -927,6 +906,104 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
                   placeholder="e.g., 18.5"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-amber-700 mb-1">Loan Type</label>
+                <select
+                  value={formData.loan_type}
+                  onChange={(e) => setFormData({
+                    ...formData, 
+                    loan_type: e.target.value as 'revolving' | 'fixed_term',
+                    original_tenure_months: e.target.value === 'revolving' ? undefined : formData.original_tenure_months,
+                    remaining_months: e.target.value === 'revolving' ? undefined : formData.remaining_months
+                  })}
+                  className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  <option value="revolving">Revolving Credit (Credit Card, etc.)</option>
+                  <option value="fixed_term">Fixed Term Loan (Personal Loan, Student Loan, etc.)</option>
+                </select>
+              </div>
+
+              {formData.loan_type === 'fixed_term' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-amber-700 mb-1">
+                      Original Loan Tenure (months)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.original_tenure_months || ''}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        original_tenure_months: parseInt(e.target.value) || undefined
+                      })}
+                      className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g., 24 (for 2 years)"
+                      min="1"
+                    />
+                    <p className="text-xs text-amber-600 mt-1">Total loan duration in months</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-amber-700 mb-1">
+                      Remaining Months to Pay
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.remaining_months || ''}
+                      onChange={(e) => setFormData({
+                        ...formData, 
+                        remaining_months: parseInt(e.target.value) || undefined
+                      })}
+                      className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="e.g., 18 (months left)"
+                      min="1"
+                      max={formData.original_tenure_months}
+                    />
+                    <p className="text-xs text-amber-600 mt-1">
+                      How many months are left to pay off this loan?
+                    </p>
+                  </div>
+
+                  {formData.remaining_months && formData.total_amount > 0 && formData.interest_rate > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Required EMI:</strong> ₹
+                        {calculateEMI(
+                          formData.total_amount,
+                          formData.interest_rate,
+                          formData.remaining_months
+                        ).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        /month
+                      </p>
+                      <p className="text-xs text-blue-600 mt-1">
+                        This amount must be paid monthly to clear the loan within the tenure
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {formData.loan_type === 'revolving' && (
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">
+                    Minimum Payment (₹/month)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.min_payment}
+                    onChange={(e) => setFormData({
+                      ...formData, 
+                      min_payment: parseFloat(e.target.value) || 0
+                    })}
+                    className="w-full border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    placeholder="e.g., 1000"
+                  />
+                  <p className="text-xs text-amber-600 mt-1">
+                    Minimum monthly payment required (leave 0 for auto-calculation)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-3 mt-6">

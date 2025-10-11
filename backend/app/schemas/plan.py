@@ -32,6 +32,7 @@ class RepaymentPlanResponse(BaseModel):
     months_to_debt_free: int
     schedule_df: List[Dict[str, Any]]
     balance_series: List[float]
+    error: Optional[str] = None  # NEW: For tenure violation errors
 
 class StrategyComparisonResponse(BaseModel):
     avalanche: RepaymentPlanResponse

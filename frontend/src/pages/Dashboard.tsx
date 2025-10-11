@@ -14,7 +14,8 @@ import {
   Star,
   Users,
   Clock,
-  Sparkles
+  Sparkles,
+  DollarSign
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -64,6 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     { id: 'educational-hub', label: 'AI Assistant', icon: <MessageCircle className="w-4 h-4" /> },
     { id: 'repayment-plan', label: 'Repayment Plan', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'what-if', label: 'What If', icon: <Calculator className="w-4 h-4" /> },
+    { id: 'loan-recommendations', label: 'Loan Finder', icon: <DollarSign className="w-4 h-4" /> },
     { id: 'document-analyzer', label: 'Document Analyzer', icon: <FileText className="w-4 h-4" /> },
     { id: 'credit-score', label: 'Credit Score', icon: <Shield className="w-4 h-4" /> }
   ];

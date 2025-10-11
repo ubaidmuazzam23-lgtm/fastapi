@@ -10,9 +10,8 @@ from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/plans", tags=["repayment-plans"])
 
-@router.get("/debt-summary")
+@router.get("/debt-summary", response_model=Dict[str, Any])
 async def get_debt_summary(
-    request: Request,
     current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """Get user's debt summary for planning interface"""
@@ -20,6 +19,7 @@ async def get_debt_summary(
         summary = await PlanService.get_user_debt_summary(current_user.clerk_user_id)
         return summary
     except Exception as e:
+        print(f"ERROR in get_debt_summary: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get debt summary: {str(e)}"
@@ -27,7 +27,6 @@ async def get_debt_summary(
 
 @router.post("/generate", response_model=RepaymentPlanResponse)
 async def generate_repayment_plan(
-    request: Request,
     plan_request: RepaymentPlanRequest,
     current_user: User = Depends(get_current_user)
 ):
@@ -51,7 +50,6 @@ async def generate_repayment_plan(
 
 @router.post("/compare", response_model=StrategyComparisonResponse)
 async def compare_strategies(
-    request: Request,
     monthly_budget: float,
     max_months: int = 60,
     current_user: User = Depends(get_current_user)
@@ -83,26 +81,88 @@ async def compare_strategies(
 
 @router.get("/validate-budget/{monthly_budget}")
 async def validate_budget(
-    request: Request,
     monthly_budget: float,
     current_user: User = Depends(get_current_user)
 ):
-    """Validate if budget covers minimum payments"""
+    """Validate if budget covers minimum payments including tenure requirements"""
     try:
         summary = await PlanService.get_user_debt_summary(current_user.clerk_user_id)
         
         is_valid = monthly_budget >= summary["monthly_minimums"]
         excess_budget = monthly_budget - summary["monthly_minimums"] if is_valid else 0
+        shortage = summary["monthly_minimums"] - monthly_budget if not is_valid else 0
+        
+        # Build detailed message
+        message = ""
+        if is_valid:
+            message = "Budget covers all minimum payments"
+            if summary.get("has_tenure_debts"):
+                message += " including required EMIs for fixed-term loans"
+        else:
+            message = f"Budget is ₹{shortage:,.0f} short of minimum requirements"
+            if summary.get("has_tenure_debts"):
+                message += ". Some debts have fixed tenure requirements that cannot be met with this budget."
         
         return {
             "is_valid": is_valid,
             "monthly_budget": monthly_budget,
             "minimum_required": summary["monthly_minimums"],
             "excess_budget": excess_budget,
-            "message": "Budget covers minimums" if is_valid else f"Budget is ₹{summary['monthly_minimums'] - monthly_budget:,.0f} short"
+            "shortage": shortage,
+            "has_tenure_debts": summary.get("has_tenure_debts", False),
+            "message": message,
+            "warning": "You have fixed-term loans that must be paid within their tenure" if summary.get("has_tenure_debts") else None
         }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to validate budget: {str(e)}"
+        )
+
+@router.get("/tenure-analysis")
+async def get_tenure_analysis(
+    current_user: User = Depends(get_current_user)
+):
+    """Get detailed analysis of tenure constraints"""
+    try:
+        summary = await PlanService.get_user_debt_summary(current_user.clerk_user_id)
+        
+        tenure_debts = [
+            debt for debt in summary["debts"] 
+            if debt.get("loan_type") == "fixed_term" and debt.get("remaining_months")
+        ]
+        
+        if not tenure_debts:
+            return {
+                "has_tenure_debts": False,
+                "message": "No fixed-term loans with tenure constraints",
+                "tenure_debts": []
+            }
+        
+        total_required_emi = sum(debt.get("required_emi", 0) for debt in tenure_debts)
+        
+        tenure_analysis = []
+        for debt in tenure_debts:
+            tenure_analysis.append({
+                "name": debt["name"],
+                "balance": debt["balance"],
+                "remaining_months": debt["remaining_months"],
+                "required_emi": debt["required_emi"],
+                "total_to_pay": debt["required_emi"] * debt["remaining_months"],
+                "apr": debt["apr"]
+            })
+        
+        return {
+            "has_tenure_debts": True,
+            "tenure_debt_count": len(tenure_debts),
+            "total_required_emi": total_required_emi,
+            "available_budget": summary["available_budget"],
+            "budget_sufficient": summary["available_budget"] >= total_required_emi,
+            "tenure_debts": tenure_analysis,
+            "message": f"You have {len(tenure_debts)} fixed-term loan(s) requiring ₹{total_required_emi:,.0f}/month minimum"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze tenure: {str(e)}"
         )

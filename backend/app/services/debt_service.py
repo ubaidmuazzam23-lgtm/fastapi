@@ -14,6 +14,11 @@ class DebtService:
             clerk_user_id=clerk_user_id,
             **debt_data.model_dump()
         )
+        
+        # Auto-calculate fixed_emi if tenure is provided
+        if debt.loan_type == "fixed_term" and debt.remaining_months:
+            debt.fixed_emi = debt.calculate_required_emi()
+        
         await debt.insert()
         return debt
     
@@ -53,6 +58,10 @@ class DebtService:
         for field, value in update_data.items():
             setattr(debt, field, value)
         
+        # Recalculate fixed_emi if tenure changed
+        if debt.loan_type == "fixed_term" and debt.remaining_months:
+            debt.fixed_emi = debt.calculate_required_emi()
+        
         await debt.save()
         return debt
     
@@ -83,19 +92,32 @@ class DebtService:
         total_debt_amount = sum(debt.total_amount for debt in debts)
         total_monthly_interest = sum(debt.calculate_monthly_interest() for debt in debts)
         
-        # Calculate available budget
-        available_budget = user.monthly_income - user.monthly_expenses
-        debt_to_income_ratio = (total_monthly_interest / user.monthly_income * 100) if user.monthly_income > 0 else 0
+        # Calculate total required EMI (including tenure constraints)
+        total_required_emi = 0.0
+        for debt in debts:
+            # Check if debt has loan_type attribute (backward compatibility)
+            loan_type = getattr(debt, 'loan_type', 'revolving')
+            if loan_type == "fixed_term":
+                total_required_emi += debt.calculate_required_emi()
+            else:
+                total_required_emi += getattr(debt, 'min_payment', 0)
+        
+        # Calculate available budget - handle missing attributes
+        monthly_income = getattr(user, 'monthly_income', 0)
+        monthly_expenses = getattr(user, 'monthly_expenses', 0)
+        available_budget = monthly_income - monthly_expenses
+        debt_to_income_ratio = (total_monthly_interest / monthly_income * 100) if monthly_income > 0 else 0
         
         return {
             "user_profile": {
-                "monthly_income": user.monthly_income,
-                "monthly_expenses": user.monthly_expenses,
+                "monthly_income": monthly_income,
+                "monthly_expenses": monthly_expenses,
                 "available_budget": available_budget
             },
             "debt_summary": {
                 "total_debt_amount": total_debt_amount,
                 "total_monthly_interest": total_monthly_interest,
+                "total_required_emi": total_required_emi,
                 "debt_count": len(debts),
                 "debt_to_income_ratio": debt_to_income_ratio,
                 "average_interest_rate": sum(debt.interest_rate for debt in debts) / len(debts) if debts else 0

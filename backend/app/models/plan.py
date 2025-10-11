@@ -1,58 +1,56 @@
-# app/models/plan.py
-from beanie import Document
-from pydantic import Field
-from typing import List, Optional, Dict, Any
-from datetime import datetime
-from enum import Enum
-
-class StrategyType(str, Enum):
-    AVALANCHE = "avalanche"
-    SNOWBALL = "snowball"  
-    OPTIMAL = "optimal"
-
-class Plan(Document):
-    clerk_user_id: str = Field(..., index=True)
-    plan_name: str = Field(..., min_length=1, max_length=100)
-    strategy: StrategyType
-    monthly_budget: float = Field(..., ge=0)
-    max_months: int = Field(default=60, ge=1, le=120)
-    
-    # Plan results
-    total_months: Optional[int] = None
-    total_interest: Optional[float] = None
-    total_payments: Optional[float] = None
-    monthly_schedule: Optional[List[Dict[str, Any]]] = None
-    balance_trajectory: Optional[List[float]] = None
-    
-    # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    is_active: bool = Field(default=True)
-    
-    class Settings:
-        name = "plans"
-        indexes = [
-            "clerk_user_id",
-            "strategy",
-            "created_at"
-        ]
-    
-    def to_dict(self):
-        data = self.model_dump()
-        data['id'] = str(self.id)
-        return data
-
-# app/schemas/plan.py
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
 
+# ============================================
+# SHARED ENUM
+# ============================================
 class StrategyType(str, Enum):
     AVALANCHE = "avalanche"
     SNOWBALL = "snowball"
     OPTIMAL = "optimal"
 
+# ============================================
+# REPAYMENT PLAN SCHEMAS (for /plans/generate, /plans/compare)
+# Used by plan_service.py
+# ============================================
+class RepaymentPlanRequest(BaseModel):
+    strategy: StrategyType
+    monthly_budget: float = Field(..., gt=0)
+    max_months: int = Field(default=60, ge=12, le=120)
+
+class AllocationResponse(BaseModel):
+    name: str
+    payment: float
+    interest_accrued: float
+    principal_reduction: float
+
+class RepaymentMonthResponse(BaseModel):
+    month_index: int
+    allocations: List[AllocationResponse]
+    total_interest: float
+    total_paid: float
+
+class RepaymentPlanResponse(BaseModel):
+    strategy_name: str
+    months: List[RepaymentMonthResponse]
+    total_interest_paid: float
+    months_to_debt_free: int
+    schedule_df: List[Dict[str, Any]]
+    balance_series: List[float]
+    error: Optional[str] = None  # For tenure violation errors
+
+class StrategyComparisonResponse(BaseModel):
+    avalanche: RepaymentPlanResponse
+    snowball: RepaymentPlanResponse
+    optimal: RepaymentPlanResponse
+    best_strategy: str
+
+# ============================================
+# SAVED PLAN SCHEMAS (for /saved-plans)
+# Used by saved_plans routes
+# ============================================
 class PlanCreate(BaseModel):
     plan_name: str = Field(..., min_length=1, max_length=100)
     strategy: StrategyType
@@ -107,7 +105,9 @@ class PlanGenerateRequest(BaseModel):
 class PlanComparisonRequest(BaseModel):
     monthly_budget: float = Field(..., ge=0)
     max_months: int = Field(default=60, ge=1, le=120)
-    strategies: List[StrategyType] = Field(default=[StrategyType.AVALANCHE, StrategyType.SNOWBALL, StrategyType.OPTIMAL])
+    strategies: List[StrategyType] = Field(
+        default=[StrategyType.AVALANCHE, StrategyType.SNOWBALL, StrategyType.OPTIMAL]
+    )
 
 class PlanComparisonResponse(BaseModel):
     comparisons: Dict[str, Dict[str, Any]]
