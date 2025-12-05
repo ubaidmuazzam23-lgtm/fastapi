@@ -38,6 +38,7 @@ pdfplumber
 pdfminer.six
 numpy
 pandas
+reportlab
 
 # FastAPI internals
 starlette
