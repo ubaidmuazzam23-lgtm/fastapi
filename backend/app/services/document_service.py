@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 import pdfplumber
 from fastapi import UploadFile, HTTPException
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
