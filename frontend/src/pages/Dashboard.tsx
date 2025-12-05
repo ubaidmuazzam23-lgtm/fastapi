@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useEffect, useState } from 'react';
 import { UserButton, useAuth, useUser } from '@clerk/clerk-react';
 import {
@@ -35,7 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       try {
         const token = await getToken();
         
-        const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+        const response = await fetch(API_URL + '/api/v1/auth/me', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useCallback } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { 
@@ -142,7 +143,7 @@ const DocumentAnalyzer: React.FC<DocumentAnalyzerProps> = ({ onNavigate }) => {
         formData.append('focus_areas', focusAreas.join(','));
       }
 
-      const response = await fetch('http://localhost:8000/api/v1/documents/analyze', {
+      const response = await fetch(API_URL + '/api/v1/documents/analyze', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

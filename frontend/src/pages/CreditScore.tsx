@@ -1,3 +1,5 @@
+import { API_URL } from '../lib/api';
+
 import React, { useState, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import {
@@ -133,7 +135,7 @@ const CreditScore: React.FC<CreditScoreProps> = ({ onNavigate }) => {
 
   const apiCall = async (url: string, options: any = {}) => {
     const token = await getToken();
-    const response = await fetch(`http://localhost:8000${url}`, {
+    const response = await fetch(`${API_URL}${url}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',

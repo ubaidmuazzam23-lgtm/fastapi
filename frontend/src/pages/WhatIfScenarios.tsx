@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import {
@@ -96,7 +97,7 @@ const WhatIfScenarios: React.FC<WhatIfScenariosProps> = ({ onNavigate }) => {
         windfall_month: scenarioType === 'windfall' ? windfallMonth : 1
       };
 
-      const response = await fetch('http://localhost:8000/api/v1/scenarios/what-if', {
+      const response = await fetch(API_URL + '/api/v1/scenarios/what-if', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

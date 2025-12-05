@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import {
@@ -147,7 +148,7 @@ const LoanRecommendations: React.FC = () => {
 
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/loans/recommend', {
+      const response = await fetch(API_URL + '/api/v1/loans/recommend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +189,7 @@ const LoanRecommendations: React.FC = () => {
 
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/loans/chat', {
+      const response = await fetch(API_URL + '/api/v1/loans/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

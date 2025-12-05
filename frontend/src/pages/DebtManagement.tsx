@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { UserButton, useAuth, useUser } from '@clerk/clerk-react';
 import { 
@@ -129,7 +130,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
       }
       
       console.log('📡 Making request to financial-profile endpoint...');
-      const response = await fetch('http://localhost:8000/api/v1/debt/financial-profile', {
+      const response = await fetch(API_URL + '/api/v1/debt/financial-profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     console.log('💾 Updating financial profile...', financialProfileData);
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/debt/financial-profile', {
+      const response = await fetch(API_URL + '/api/v1/debt/financial-profile', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -195,7 +196,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
         return;
       }
       
-      const response = await fetch('http://localhost:8000/api/v1/debt/summary', {
+      const response = await fetch(API_URL + '/api/v1/debt/summary', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -238,7 +239,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     console.log('➕ Adding debt:', formData);
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/debt/', {
+      const response = await fetch(API_URL + '/api/v1/debt/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -263,7 +264,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     
     try {
       const token = await getToken();
-      const response = await fetch(`http://localhost:8000/api/v1/debt/${editingDebt.id}`, {
+      const response = await fetch(`${API_URL}/api/v1/debt/${editingDebt.id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -288,7 +289,7 @@ const DebtManagement: React.FC<DebtManagementProps> = ({ onNavigate }) => {
     
     try {
       const token = await getToken();
-      const response = await fetch(`http://localhost:8000/api/v1/debt/${debtId}`, {
+      const response = await fetch(`${API_URL}/api/v1/debt/${debtId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

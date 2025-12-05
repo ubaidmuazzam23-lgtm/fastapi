@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { UserButton, useAuth } from '@clerk/clerk-react';
 import { 
@@ -68,7 +69,7 @@ const EducationHub: React.FC<EducationHubProps> = ({ onNavigate }) => {
   const loadSupportedLanguages = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/education/supported-languages', {
+      const response = await fetch(API_URL + '/api/v1/education/supported-languages', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -83,7 +84,7 @@ const EducationHub: React.FC<EducationHubProps> = ({ onNavigate }) => {
   const loadSuggestedTopics = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/education/suggested-topics', {
+      const response = await fetch(API_URL + '/api/v1/education/suggested-topics', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -98,7 +99,7 @@ const EducationHub: React.FC<EducationHubProps> = ({ onNavigate }) => {
   const loadChatHistory = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/education/history?limit=10', {
+      const response = await fetch(API_URL + '/api/v1/education/history?limit=10', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -181,7 +182,7 @@ const EducationHub: React.FC<EducationHubProps> = ({ onNavigate }) => {
         console.log('Selected language:', selectedLanguage);
 
         const token = await getToken();
-        const response = await fetch('http://localhost:8000/api/v1/education/voice-chat', {
+        const response = await fetch(API_URL + '/api/v1/education/voice-chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -285,7 +286,7 @@ const EducationHub: React.FC<EducationHubProps> = ({ onNavigate }) => {
 
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/education/chat', {
+      const response = await fetch(API_URL + '/api/v1/education/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

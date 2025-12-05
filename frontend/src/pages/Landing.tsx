@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState } from 'react';
 import { SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react';
 import { 

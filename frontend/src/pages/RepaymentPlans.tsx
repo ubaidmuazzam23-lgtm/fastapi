@@ -1,3 +1,4 @@
+import { API_URL } from '../lib/api';
 import React, { useState, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
   import {
@@ -139,7 +140,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
   const fetchDebtSummary = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/plans/debt-summary', {
+      const response = await fetch(API_URL + '/api/v1/plans/debt-summary', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -159,7 +160,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
   const fetchSavedPlans = async () => {
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/saved-plans/', {
+      const response = await fetch(API_URL + '/api/v1/saved-plans/', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -181,7 +182,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
     setLoading(true);
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/plans/generate', {
+      const response = await fetch(API_URL + '/api/v1/plans/generate', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -216,7 +217,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
 
     try {
       const token = await getToken();
-      const response = await fetch('http://localhost:8000/api/v1/saved-plans/', {
+      const response = await fetch(API_URL + '/api/v1/saved-plans/', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -249,7 +250,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
   const markPaymentComplete = async (planId: string, monthIndex: number) => {
     try {
       const token = await getToken();
-      const response = await fetch(`http://localhost:8000/api/v1/saved-plans/${planId}/mark-payment`, {
+      const response = await fetch(`${API_URL}/api/v1/saved-plans/${planId}/mark-payment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -300,7 +301,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
       
       // Mark each pending payment as complete
       for (const payment of pendingPayments) {
-        const response = await fetch(`http://localhost:8000/api/v1/saved-plans/${planId}/mark-payment`, {
+        const response = await fetch(`${API_URL}/api/v1/saved-plans/${planId}/mark-payment`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -324,7 +325,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
       await fetchDebtSummary();
       
       if (selectedSavedPlan) {
-        const response = await fetch(`http://localhost:8000/api/v1/saved-plans/${planId}`, {
+        const response = await fetch(`${API_URL}/api/v1/saved-plans/${planId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -351,7 +352,7 @@ const RepaymentPlans: React.FC<RepaymentPlansProps> = ({ onNavigate }) => {
 
     try {
       const token = await getToken();
-      const response = await fetch(`http://localhost:8000/api/v1/saved-plans/${planId}`, {
+      const response = await fetch(`${API_URL}/api/v1/saved-plans/${planId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
