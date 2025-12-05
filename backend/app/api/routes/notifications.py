@@ -120,63 +120,11 @@ async def send_test_notification(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Test endpoint to send different types of emails
-    email_type: welcome, debt_created, payment_reminder, milestone, monthly_report
+    Test endpoint - NOTIFICATIONS DISABLED
+    This endpoint is disabled. No emails will be sent.
     """
-    user_name = current_user.first_name or "User"
-    
-    result = None
-    
-    if email_type == "welcome":
-        result = await NotificationService.send_welcome_email(
-            user_id=current_user.clerk_user_id,
-            user_name=user_name
-        )
-    
-    elif email_type == "debt_created":
-        result = await NotificationService.send_debt_created_email(
-            user_id=current_user.clerk_user_id,
-            user_name=user_name,
-            debt_name="Test Credit Card",
-            debt_amount=50000.0
-        )
-    
-    elif email_type == "payment_reminder":
-        result = await NotificationService.send_payment_reminder(
-            user_id=current_user.clerk_user_id,
-            user_name=user_name,
-            debt_name="Test Loan",
-            due_date="2025-10-15"
-        )
-    
-    elif email_type == "milestone":
-        result = await NotificationService.send_milestone_email(
-            user_id=current_user.clerk_user_id,
-            user_name=user_name,
-            milestone="First ₹10,000 paid off",
-            amount_paid=10000.0
-        )
-    
-    elif email_type == "monthly_report":
-        result = await NotificationService.send_monthly_report(
-            user_id=current_user.clerk_user_id,
-            user_name=user_name,
-            total_debt=100000.0,
-            paid_this_month=5000.0,
-            interest_saved=1200.0
-        )
-    
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid email_type. Use: welcome, debt_created, payment_reminder, milestone, monthly_report"
-        )
-    
-    if result:
-        return {
-            "message": f"Test {email_type} email sent successfully!",
-            "notification_id": str(result.id),
-            "status": result.status
-        }
-    else:
-        raise HTTPException(status_code=500, detail="Failed to send test email")
+    return {
+        "message": "Notification system is currently disabled",
+        "email_type": email_type,
+        "status": "disabled"
+    }

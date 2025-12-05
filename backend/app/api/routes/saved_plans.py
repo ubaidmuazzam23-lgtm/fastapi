@@ -8,7 +8,6 @@ from app.schemas.saved_plan import (
 from app.services.saved_plan_service import SavedPlanService
 from app.api.dependencies import get_current_user
 from datetime import datetime
-import asyncio
 
 router = APIRouter(prefix="/saved-plans", tags=["saved-plans"])
 
@@ -29,33 +28,6 @@ async def save_repayment_plan(
         
         # Calculate progress percentage
         progress = (plan.completed_months / plan.months_to_debt_free * 100) if plan.months_to_debt_free > 0 else 0
-        
-        # Prepare plan data for PDF and email
-        plan_data_for_email = {
-            'plan_name': plan.plan_name,
-            'strategy': plan.strategy,
-            'monthly_budget': plan.monthly_budget,
-            'total_interest_paid': plan.total_interest_paid,
-            'months_to_debt_free': plan.months_to_debt_free,
-            'original_total_debt': plan.original_total_debt,
-            'monthly_payments': [
-                {
-                    'month_index': p.month_index,
-                    'total_paid': p.total_paid,
-                    'total_interest': p.total_interest,
-                    'allocations': p.allocations
-                }
-                for p in plan.monthly_payments
-            ]
-        }
-        
-        # Send email with PDF (background task)
-        from app.services.notification_service import NotificationService
-        asyncio.create_task(NotificationService.send_plan_saved_email(
-            user_id=current_user.clerk_user_id,
-            user_name=current_user.first_name or "User",
-            plan_data=plan_data_for_email
-        ))
         
         return SavedPlanResponse(
             id=str(plan.id),
@@ -203,28 +175,6 @@ async def mark_payment_complete(
         
         if not plan:
             raise HTTPException(status_code=404, detail="Plan or payment not found")
-        
-        # Prepare payment data for email
-        completed_payment = plan.monthly_payments[mark_request.month_index]
-        payment_data_for_email = {
-            'plan_name': plan.plan_name,
-            'month_index': mark_request.month_index,
-            'payment_date': completed_payment.paid_date.strftime('%B %d, %Y') if completed_payment.paid_date else datetime.now().strftime('%B %d, %Y'),
-            'total_paid': completed_payment.total_paid,
-            'total_interest': completed_payment.total_interest,
-            'allocations': completed_payment.allocations,
-            'completed_months': plan.completed_months,
-            'total_months': plan.months_to_debt_free,
-            'progress_percentage': (plan.completed_months / plan.months_to_debt_free * 100) if plan.months_to_debt_free > 0 else 0
-        }
-        
-        # Send receipt email with PDF (background task)
-        from app.services.notification_service import NotificationService
-        asyncio.create_task(NotificationService.send_payment_receipt_email(
-            user_id=current_user.clerk_user_id,
-            user_name=current_user.first_name or "User",
-            payment_data=payment_data_for_email
-        ))
         
         return SavedPlanResponse(
             id=str(plan.id),

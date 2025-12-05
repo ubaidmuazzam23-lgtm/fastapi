@@ -7,7 +7,6 @@ from app.schemas.user import (
     UserProfileResponse, AuthResponse
 )
 from app.services.user_service import UserService
-from app.services.notification_service import NotificationService
 from app.api.dependencies import get_current_user, verify_clerk_token
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -24,13 +23,6 @@ async def test_register_user(user_data: UserCreate):
         clerk_user_id=user_data.clerk_user_id,
         user_data=user_data
     )
-    
-    # Send welcome email only for new users
-    if is_new_user:
-        await NotificationService.send_welcome_email(
-            user_id=user.clerk_user_id,
-            user_name=user.first_name or "User"
-        )
     
     return AuthResponse(
         user=UserResponse(**user.to_dict()),
@@ -75,16 +67,6 @@ async def register_user(
     current_user: User = Depends(get_current_user)
 ):
     """Register/sync user with Clerk token"""
-    # Check if this is a new user (first time registration)
-    # The get_current_user dependency already created/fetched the user
-    # We can check if user was just created by checking if they have any debts or data
-    
-    # Send welcome email (only sent once due to notification preferences)
-    await NotificationService.send_welcome_email(
-        user_id=current_user.clerk_user_id,
-        user_name=current_user.first_name or "User"
-    )
-    
     return AuthResponse(
         user=UserResponse(**current_user.to_dict()),
         message="User authenticated successfully"
@@ -96,17 +78,6 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_user)
 ):
     """Get current user information"""
-    # Check if this is a brand new user (created within last 5 minutes)
-    from datetime import datetime, timedelta
-    time_since_creation = datetime.utcnow() - current_user.created_at
-    
-    # If user was created less than 1 minute ago, send welcome email
-    if time_since_creation < timedelta(minutes=1):
-        await NotificationService.send_welcome_email(
-            user_id=current_user.clerk_user_id,
-            user_name=current_user.first_name or "User"
-        )
-    
     return UserResponse(**current_user.to_dict())
 
 @router.get("/profile", response_model=UserProfileResponse)
